@@ -1,0 +1,393 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Hours Tracker</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+
+    <link rel="stylesheet" href="app.css" />
+  </head>
+  <body>
+    <div class="app">
+      <!-- ============ HEADER ============ -->
+      <header class="topbar">
+        <div class="brand">
+          <span class="brand__icon" aria-hidden="true">
+            <svg
+              viewBox="0 0 24 24"
+              width="22"
+              height="22"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <circle cx="12" cy="12" r="9" />
+              <path d="M12 7v5l3 2" />
+            </svg>
+          </span>
+          <span class="brand__name">Hours Tracker</span>
+        </div>
+
+        <button type="button" class="btn btn--reset" id="reset-btn">
+          <svg
+            viewBox="0 0 24 24"
+            width="16"
+            height="16"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M3 12a9 9 0 1 0 3-6.7" />
+            <path d="M3 4v5h5" />
+          </svg>
+          Reset
+        </button>
+      </header>
+
+      <!-- ============ HERO ============ -->
+      <section class="hero">
+        <p class="eyebrow">Make every hour count</p>
+        <h1 class="hero__title">A little closer, <span>every day.</span></h1>
+        <p class="hero__sub">
+          Track your time. Reach your goal.
+        </p>
+      </section>
+
+      <!-- ============ PROGRESS CARD ============ -->
+      <section class="card progress" aria-labelledby="progress-title">
+        <div class="card__head">
+          <h2 class="card__title" id="progress-title">Your progress</h2>
+          <span class="pill pill--status" id="status-pill">Set a goal</span>
+        </div>
+
+        <div class="progress__body">
+          <!-- Ring: stroke-dashoffset controls the fill (circumference ≈ 502.65) -->
+          <div class="ring" id="ring" role="img" aria-label="No goal set yet">
+            <svg viewBox="0 0 200 200" class="ring__svg" aria-hidden="true">
+              <circle class="ring__track" cx="100" cy="100" r="80" />
+              <circle
+                class="ring__fill"
+                id="ring-fill"
+                cx="100"
+                cy="100"
+                r="80"
+                stroke-dasharray="502.65"
+                stroke-dashoffset="502.65"
+              />
+            </svg>
+            <div class="ring__label">
+              <span class="ring__value"
+                ><strong id="percent-value">--</strong><small>%</small></span
+              >
+              <span class="ring__caption">of your goal</span>
+            </div>
+          </div>
+
+          <div class="stats">
+            <div class="stat">
+              <p class="stat__label">
+                <i class="dot dot--green"></i>Total time accumulated
+              </p>
+              <p class="stat__value">
+                <strong id="total-hours-acc">0h 0m</strong>
+              </p>
+            </div>
+
+            <div class="stat">
+              <p class="stat__label">
+                <i class="dot dot--grey"></i>Time remaining
+              </p>
+              <p class="stat__value">
+                <strong id="remaining-time">--</strong>
+              </p>
+            </div>
+
+            <div class="goal-chip">
+              <span class="goal-chip__text">Goal:</span>
+              <input
+                id="target-hours-input"
+                type="number"
+                min="1"
+                max="100000"
+                step="1"
+                inputmode="numeric"
+                aria-label="Goal in hours"
+                data-whole
+              />
+              <button
+                type="button"
+                class="icon-btn icon-btn--plain"
+                id="edit-goal-btn"
+                aria-label="Save goal"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  width="16"
+                  height="16"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M12 20h9" />
+                  <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <hr class="divider" />
+
+        <div class="prev-hours">
+          <label class="prev-hours__title" for="prev-hrs-input"
+            >Previously accumulated time</label
+          >
+          <p class="prev-hours__hint">
+            Time earned before these entries. Added to your logged time.
+          </p>
+          <div class="prev-hours__row">
+            <input
+              type="number"
+              id="prev-hrs-input"
+              class="input input--number"
+              min="0"
+              max="100000"
+              step="1"
+              inputmode="numeric"
+              aria-label="Previous hours"
+              data-whole
+            />
+            <span class="prev-hours__unit">hrs</span>
+            <input
+              type="number"
+              id="prev-mins-input"
+              class="input input--number"
+              min="0"
+              max="59"
+              step="1"
+              inputmode="numeric"
+              aria-label="Previous minutes"
+              data-whole
+            />
+            <span class="prev-hours__unit">mins</span>
+            <button
+              type="button"
+              class="icon-btn icon-btn--confirm"
+              id="save-prev-hours-btn"
+              aria-label="Save previously accumulated time"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                width="18"
+                height="18"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2.2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <path d="m5 12 5 5L20 7" />
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <hr class="divider divider--soft" />
+
+        <p class="card__foot">
+          <svg
+            viewBox="0 0 24 24"
+            width="16"
+            height="16"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.8"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <path
+              d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.5 19 2c1 2 2 4.2 2 8 0 5.5-4.8 10-10 10Z"
+            />
+            <path d="M2 21c0-3 1.9-5.6 5-7" />
+          </svg>
+          Small steps add up to big things. You’ve got this.
+        </p>
+      </section>
+
+      <!-- ============ LOOKING AHEAD CARD ============ -->
+      <section class="card ahead" aria-labelledby="ahead-title">
+        <span class="ahead__bg" aria-hidden="true"></span>
+
+        <div class="ahead__top">
+          <span class="icon-tile" aria-hidden="true">
+            <svg
+              viewBox="0 0 24 24"
+              width="22"
+              height="22"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.8"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <rect x="3" y="4.5" width="18" height="16" rx="3" />
+              <path d="M8 2.5v4M16 2.5v4M3 10h18" />
+              <path d="M8 14h.01M12 14h.01M16 14h.01M8 17.5h.01M12 17.5h.01" />
+            </svg>
+          </span>
+          <p class="eyebrow ahead__tag" id="ahead-title">Looking ahead</p>
+        </div>
+
+        <p class="ahead__label">Estimated completion date</p>
+        <p class="ahead__date" id="est-date">--</p>
+
+        <p class="ahead__meta">
+          <i class="dot dot--grey"></i>
+          <span class="pill pill--soft" id="est-days">--</span>
+        </p>
+
+        <hr class="divider divider--light" />
+
+        <div class="pace">
+          <div class="pace__text">
+            <label class="pace__title" for="pace-input"
+              >Assumed hours per day</label
+            >
+            <p class="pace__hint">Average pace, starting now</p>
+          </div>
+
+          <div class="stepper">
+            <button
+              type="button"
+              class="stepper__btn"
+              id="pace-minus"
+              aria-label="Decrease hours per day"
+            >
+              &minus;
+            </button>
+            <input
+              type="number"
+              id="pace-input"
+              min="1"
+              max="24"
+              step="1"
+              inputmode="numeric"
+              data-whole
+            />
+            <button
+              type="button"
+              class="stepper__btn"
+              id="pace-plus"
+              aria-label="Increase hours per day"
+            >
+              +
+            </button>
+          </div>
+        </div>
+
+        <hr class="divider divider--light" />
+
+        <p class="ahead__note">
+          Based on your remaining hours + daily pace, including partial days. No
+          fixed work schedule assumed.
+        </p>
+      </section>
+
+      <!-- ============ LOG YOUR TIME CARD ============ -->
+      <section class="card log" aria-labelledby="log-title">
+        <div class="log__head">
+          <div>
+            <h2 class="card__title card__title--sm" id="log-title">
+              Log your time
+            </h2>
+            <p class="log__sub">Another day, another step forward.</p>
+          </div>
+        </div>
+
+        <form class="log__form" id="log-form" onsubmit="return false;">
+          <div class="field">
+            <label class="field__label" for="log-date">Date</label>
+            <input type="date" id="log-date" class="input" />
+          </div>
+
+          <div class="field-row">
+            <div class="field">
+              <label class="field__label" for="time-in">Time in</label>
+              <input type="time" id="time-in" class="input" value="09:00" />
+            </div>
+            <div class="field">
+              <label class="field__label" for="time-out">Time out</label>
+              <input type="time" id="time-out" class="input" value="17:30" />
+            </div>
+          </div>
+
+          <div class="log__action">
+            <p class="duration">
+              <span class="duration__label">Duration</span>
+              <strong class="duration__value" id="duration-value"
+                >8h 30m</strong
+              >
+            </p>
+            <button type="button" class="btn btn--primary" id="log-entry-btn">
+              <svg
+                viewBox="0 0 24 24"
+                width="18"
+                height="18"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2.2"
+                stroke-linecap="round"
+                aria-hidden="true"
+              >
+                <path d="M12 5v14M5 12h14" />
+              </svg>
+              Log Entry
+            </button>
+          </div>
+        </form>
+      </section>
+
+      <!-- ============ TIME HISTORY ============ -->
+      <section class="card history" aria-labelledby="history-title">
+        <div class="history__head">
+          <div class="history__title-wrap">
+            <h2 class="card__title card__title--sm" id="history-title">
+              Time history
+            </h2>
+            <span class="pill pill--count" id="entry-count">0 entries</span>
+          </div>
+
+          <label class="sort" for="sort-select">
+            <span class="visually-hidden">Sort entries</span>
+            <select id="sort-select" class="sort__select">
+              <option value="newest">Newest first</option>
+              <option value="oldest">Oldest first</option>
+            </select>
+          </label>
+        </div>
+
+        <!-- Entries are rendered here by script.js -->
+        <ul class="entries" id="entries-list"></ul>
+      </section>
+    </div>
+
+    <script src="script.js"></script>
+  </body>
+</html>

@@ -1,0 +1,3 @@
+Hours Tracker is a small web app for working toward a target number of hours. Set a goal, add any time you've already accumulated, and log each session with a date and time in/out. The app calculates your total time, time remaining, and percentage progress, and estimates your completion date from an assumed number of hours per day. Your history is saved in the browser, and you can sort or delete entries.
+
+Built with plain HTML, CSS, and JavaScript, with one state object and a single render function.
