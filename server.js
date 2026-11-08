@@ -30,6 +30,29 @@ const requireAuth = require("./middleware/auth");
 
 const app = express();
 
+// TEMPORARY REQUEST DIAGNOSTICS
+app.use((req, res, next) => {
+  const start = Date.now();
+
+  console.log(`[REQUEST IN] ${req.method} ${req.originalUrl}`);
+
+  res.on("finish", () => {
+    console.log(
+      `[REQUEST OUT] ${req.method} ${req.originalUrl} - ${res.statusCode} - ${Date.now() - start}ms`
+    );
+  });
+
+  next();
+});
+
+// TEMPORARY EARLY HEALTH CHECK
+app.get("/health", (req, res) => {
+  res.status(200).json({
+    status: "OK",
+    message: "Express server is responding."
+  });   
+});
+
 const PORT = process.env.PORT || 3000;
 const IS_PRODUCTION = process.env.NODE_ENV === "production";
 
@@ -209,16 +232,6 @@ app.use("/api", apiLimiter);
 // Apply stricter limit to authentication endpoints.
 app.use("/api/auth", authLimiter);
 
-// ==================================================
-// 10. HEALTH CHECK
-// ==================================================
-
-app.get("/health", (req, res) => {
-  res.status(200).json({
-    status: "OK",
-    message: "Hours Tracker API is running.",
-  });
-});
 
 // ==================================================
 // 11. AUTHENTICATION ROUTES
