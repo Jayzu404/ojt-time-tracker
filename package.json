@@ -1,0 +1,31 @@
+{
+  "name": "ojt-monitoring",
+  "version": "1.0.0",
+  "description": "Hours Tracker is a small web app for working toward a target number of hours. Set a goal, add any time you've already accumulated, and log each session with a date and time in/out. The app calculates your total time, time remaining, and percentage progress, and estimates your completion date from an assumed number of hours per day. Your history is saved in the browser, and you can sort or delete entries.",
+  "main": "db.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Jayzu404/ojt-time-tracker.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Jayzu404/ojt-time-tracker/issues"
+  },
+  "homepage": "https://github.com/Jayzu404/ojt-time-tracker#readme",
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.6",
+    "dotenv": "^18.0.9",
+    "express": "^5.3.0",
+    "express-rate-limit": "^8.7.3",
+    "helmet": "^8.3.0",
+    "mysql2": "^3.24.6"
+  }
+}

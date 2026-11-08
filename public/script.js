@@ -1,9 +1,10 @@
 // =====================================================
-// HOURS TRACKER
+// HOURS TRACKER (with backend)
 // Idea: ONE state object (`data`) + ONE render() function.
-// Handlers only change `data`, save it, and call render().
-// Totals, remaining, percentage and dates are never stored,
-// they are calculated from `data` every time (see getStats).
+// The server is now the source of truth. Each handler sends its
+// change to the API, copies the server's answer into `data`, and
+// calls render(). Totals, remaining, percentage and dates are still
+// never stored, they are calculated from `data` every time (getStats).
 // =====================================================
 
 // ===== ELEMENTS =====
@@ -27,6 +28,7 @@ const prevMinutesInput = document.getElementById("prev-mins-input");
 const savePrevHrsBtn = document.getElementById("save-prev-hours-btn");
 
 const resetBtn = document.getElementById("reset-btn");
+const logoutBtn = document.getElementById("logout-btn");
 
 const dateInput = document.getElementById("log-date");
 const timeInInput = document.getElementById("time-in");
@@ -39,7 +41,6 @@ const entryCount = document.getElementById("entry-count");
 const sortSelect = document.getElementById("sort-select");
 
 // ===== CONSTANTS =====
-const STORAGE_KEY = "hoursTracker.v1";
 const RING_CIRCUMFERENCE = 502.65; // 2 * PI * r (r = 80)
 const MAX_HOURS = 100000;
 const MAX_PACE = 24;
@@ -52,13 +53,13 @@ const TRASH_ICON = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" 
 const CALENDAR_ICON = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="15" rx="2.5"/><path d="M8 3v4M16 3v4M3.5 10h17"/></svg>`;
 
 // ===== STATE =====
-// Only the things the user typed in. Everything else is calculated.
+// A copy of what the server holds. Everything else is calculated.
 // All time values are WHOLE MINUTES.
 const data = {
   targetMinutes: 0,
   previousAccumulatedMinutes: 0,
   assumedHoursPerDay: DEFAULT_PACE,
-  entries: [], // { id, date: "YYYY-MM-DD", timeIn: "HH:MM", timeOut: "HH:MM", minutes }
+  entries: [], // { id: "12", date: "YYYY-MM-DD", timeIn: "HH:MM", timeOut: "HH:MM", minutes }
 };
 
 // =====================================================
@@ -174,61 +175,95 @@ function getDurationMinutes() {
 }
 
 // =====================================================
-// STORAGE
+// API (talking to the server)
 // =====================================================
 
-function saveState() {
+// One helper for every request. Returns the parsed JSON (or null for 204).
+// Throws an Error with .message (text for the user) and .status (HTTP code).
+async function api(method, path, body) {
+  const options = { method, headers: {} };
+
+  if (body !== undefined) {
+    options.headers["Content-Type"] = "application/json";
+    options.body = JSON.stringify(body);
+  }
+
+  let response;
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    response = await fetch(`/api${path}`, options);
+  } catch {
+    throw new Error("Could not reach the server. Check your connection.");
+  }
+
+  if (response.status === 204) return null;
+
+  const result = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    const error = new Error(result.error || "Something went wrong.");
+    error.status = response.status;
+    throw error;
+  }
+
+  return result;
+}
+
+// 401 means "not logged in (anymore)": show the login screen.
+// Anything else: tell the user what the server said.
+function handleError(error) {
+  if (error.status === 401) {
+    showAuthScreen("Your session expired. Please log in again.");
+    return;
+  }
+  alert(error.message);
+}
+
+// Only one request at a time. This also stops double-clicks.
+let busy = false;
+
+async function runAction(action) {
+  if (busy) return;
+  busy = true;
+  try {
+    await action();
   } catch (error) {
-    console.warn("Could not save:", error);
+    handleError(error);
+  } finally {
+    busy = false;
   }
 }
 
-function isWholeNumber(value) {
-  return Number.isInteger(value) && value >= 0;
+function applyGoal(goal) {
+  data.targetMinutes = goal.targetMinutes;
+  data.previousAccumulatedMinutes = goal.previousAccumulatedMinutes;
+  data.assumedHoursPerDay = goal.assumedHoursPerDay;
 }
 
-function isValidEntry(entry) {
-  return (
-    entry &&
-    typeof entry.id === "string" &&
-    /^[\w-]+$/.test(entry.id) &&
-    /^\d{4}-\d{2}-\d{2}$/.test(entry.date) &&
-    /^\d{2}:\d{2}$/.test(entry.timeIn) &&
-    /^\d{2}:\d{2}$/.test(entry.timeOut) &&
-    Number.isInteger(entry.minutes) &&
-    entry.minutes > 0
-  );
+function normalizeEntry(entry) {
+  return {
+    id: String(entry.id),
+    date: entry.date,
+    timeIn: entry.timeIn,
+    timeOut: entry.timeOut,
+    minutes: entry.minutes,
+  };
 }
 
-// Never trust stored data blindly: check every field before using it.
-function loadState() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return;
+async function loadFromServer() {
+  const result = await api("GET", "/tracker");
+  applyGoal(result.goal);
+  data.entries = result.entries.map(normalizeEntry);
+}
 
-    const saved = JSON.parse(raw);
-
-    if (isWholeNumber(saved.targetMinutes)) {
-      data.targetMinutes = saved.targetMinutes;
-    }
-    if (isWholeNumber(saved.previousAccumulatedMinutes)) {
-      data.previousAccumulatedMinutes = saved.previousAccumulatedMinutes;
-    }
-    if (
-      Number.isInteger(saved.assumedHoursPerDay) &&
-      saved.assumedHoursPerDay >= 1 &&
-      saved.assumedHoursPerDay <= MAX_PACE
-    ) {
-      data.assumedHoursPerDay = saved.assumedHoursPerDay;
-    }
-    if (Array.isArray(saved.entries)) {
-      data.entries = saved.entries.filter(isValidEntry);
-    }
-  } catch (error) {
-    console.warn("Could not load saved data:", error);
-  }
+// Wipe what's on screen (used on logout / expired session).
+function clearLocalData() {
+  data.targetMinutes = 0;
+  data.previousAccumulatedMinutes = 0;
+  data.assumedHoursPerDay = DEFAULT_PACE;
+  data.entries = [];
+  populateInputsFromState();
+  resetLogForm();
+  render();
 }
 
 // =====================================================
@@ -343,8 +378,122 @@ function resetLogForm() {
 }
 
 // =====================================================
+// LOGIN / SIGN UP SCREEN
+// The markup lives in index.html and the styles in app.css.
+// This part only switches modes and handles the form.
+// =====================================================
+
+const authOverlay = document.getElementById("auth-overlay");
+const authForm = document.getElementById("auth-form");
+const authTitle = document.getElementById("auth-title");
+const authSub = document.getElementById("auth-sub");
+const authEmail = document.getElementById("auth-email");
+const authPassword = document.getElementById("auth-password");
+const authPasswordToggle = document.getElementById("auth-password-toggle");
+const authHint = document.getElementById("auth-hint");
+const authError = document.getElementById("auth-error");
+const authSubmit = document.getElementById("auth-submit");
+const authSwitchText = document.getElementById("auth-switch-text");
+const authSwitch = document.getElementById("auth-switch");
+
+let authMode = "login"; // "login" or "register"
+
+function setPasswordVisible(visible) {
+  authPassword.type = visible ? "text" : "password";
+  authPasswordToggle.setAttribute("aria-pressed", String(visible));
+  authPasswordToggle.setAttribute(
+    "aria-label",
+    visible ? "Hide password" : "Show password",
+  );
+}
+
+function setAuthMode(mode) {
+  authMode = mode;
+  const isLogin = mode === "login";
+  authTitle.textContent = isLogin ? "Welcome back" : "Create your account";
+  authSub.textContent = isLogin
+    ? "Log in to continue tracking your hours."
+    : "Sign up to start tracking your hours.";
+  authSubmit.textContent = isLogin ? "Log in" : "Create account";
+  authSwitchText.textContent = isLogin
+    ? "Don’t have an account?"
+    : "Already have an account?";
+  authSwitch.textContent = isLogin ? "Sign up" : "Log in";
+  authPassword.autocomplete = isLogin ? "current-password" : "new-password";
+  authHint.hidden = isLogin;
+  authError.textContent = "";
+  setPasswordVisible(false);
+}
+
+authPasswordToggle.addEventListener("click", () => {
+  setPasswordVisible(authPassword.type === "password");
+});
+
+function showAuthScreen(message = "") {
+  clearLocalData(); // don't leave someone's data on screen behind the login box
+  authOverlay.hidden = false;
+  authError.textContent = message;
+  authEmail.focus();
+}
+
+function hideAuthScreen() {
+  authOverlay.hidden = true;
+  setPasswordVisible(false);
+}
+
+authSwitch.addEventListener("click", () => {
+  setAuthMode(authMode === "login" ? "register" : "login");
+});
+
+authForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  if (busy) return;
+
+  busy = true;
+  authSubmit.disabled = true;
+  authError.textContent = "";
+
+  try {
+    const path = authMode === "login" ? "/auth/login" : "/auth/register";
+    await api("POST", path, {
+      email: authEmail.value,
+      password: authPassword.value,
+    });
+
+    authPassword.value = "";
+    await loadFromServer();
+    populateInputsFromState();
+    resetLogForm();
+    render();
+    hideAuthScreen();
+  } catch (error) {
+    // For login/register, a 401 just means "wrong email or password"
+    authError.textContent = error.message;
+  } finally {
+    busy = false;
+    authSubmit.disabled = false;
+  }
+});
+
+logoutBtn.addEventListener("click", () => {
+  runAction(async () => {
+    const choice = confirm('Are you sure you want to logout?')
+
+    if (!choice) {
+      return;
+    }
+    
+    await api("POST", "/auth/logout");
+    authEmail.value = "";
+    authPassword.value = "";
+    setAuthMode("login");
+    showAuthScreen();
+  });
+});
+
+// =====================================================
 // EVENT HANDLERS
-// Each one: validate -> change data -> save -> render
+// Each one: validate -> ask the server -> copy its answer -> render
 // =====================================================
 
 // Block characters that make no sense in whole-number fields.
@@ -369,9 +518,13 @@ saveTargetHrsBtn.addEventListener("click", () => {
     return;
   }
 
-  data.targetMinutes = targetHours * 60;
-  saveState();
-  render();
+  runAction(async () => {
+    const result = await api("PATCH", "/goal", {
+      targetMinutes: targetHours * 60,
+    });
+    applyGoal(result.goal);
+    render();
+  });
 });
 
 // ===== SAVE PREVIOUSLY ACCUMULATED TIME =====
@@ -391,11 +544,15 @@ savePrevHrsBtn.addEventListener("click", () => {
     return;
   }
 
-  // A single value that REPLACES the old one. The total is calculated in
-  // getStats(), so clicking this twice can never double count.
-  data.previousAccumulatedMinutes = hours * 60 + minutes;
-  saveState();
-  render();
+  // A single value that REPLACES the old one, so clicking twice
+  // can never double count.
+  runAction(async () => {
+    const result = await api("PATCH", "/goal", {
+      previousAccumulatedMinutes: hours * 60 + minutes,
+    });
+    applyGoal(result.goal);
+    render();
+  });
 });
 
 // ===== PACE (assumed hours per day) =====
@@ -406,13 +563,15 @@ stepperButtons.forEach((button) => {
 
     if (next < 1 || next > MAX_PACE) return;
 
-    data.assumedHoursPerDay = next;
-    saveState();
-    render();
+    runAction(async () => {
+      const result = await api("PATCH", "/goal", { assumedHoursPerDay: next });
+      applyGoal(result.goal);
+      render();
+    });
   });
 });
 
-paceInput.addEventListener("change", () => {
+paceInput.addEventListener("change", async () => {
   const value = paceInput.valueAsNumber;
 
   if (!Number.isInteger(value) || value < 1 || value > MAX_PACE) {
@@ -421,9 +580,14 @@ paceInput.addEventListener("change", () => {
     return;
   }
 
-  data.assumedHoursPerDay = value;
-  saveState();
-  render();
+  await runAction(async () => {
+    const result = await api("PATCH", "/goal", { assumedHoursPerDay: value });
+    applyGoal(result.goal);
+    render();
+  });
+
+  // if the request failed, show the value the server still has
+  paceInput.value = data.assumedHoursPerDay;
 });
 
 // ===== LOG ENTRY =====
@@ -457,7 +621,8 @@ logEntryBtn.addEventListener("click", () => {
     return;
   }
 
-  // Overlap check (also stops an accidental double-click duplicate).
+  // Quick overlap check for instant feedback. The server checks again,
+  // and that check is the one that can't be raced.
   // Back-to-back entries (12:00 end, 12:00 start) are allowed.
   const newIn = timeToMinutes(timeIn);
   const newOut = timeToMinutes(timeOut);
@@ -474,16 +639,11 @@ logEntryBtn.addEventListener("click", () => {
     return;
   }
 
-  data.entries.push({
-    id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-    date,
-    timeIn,
-    timeOut,
-    minutes,
+  runAction(async () => {
+    const result = await api("POST", "/entries", { date, timeIn, timeOut });
+    data.entries.push(normalizeEntry(result.entry));
+    render();
   });
-
-  saveState();
-  render();
 });
 
 // ===== DELETE ENTRY (one listener for the whole list) =====
@@ -493,35 +653,50 @@ entriesList.addEventListener("click", (event) => {
 
   if (!confirm("Delete this entry?")) return;
 
-  data.entries = data.entries.filter((entry) => entry.id !== button.dataset.id);
-  saveState();
-  render();
+  const id = button.dataset.id;
+
+  runAction(async () => {
+    await api("DELETE", `/entries/${id}`);
+    data.entries = data.entries.filter((entry) => entry.id !== id);
+    render();
+  });
 });
 
 // ===== SORT =====
 sortSelect.addEventListener("change", renderEntries);
 
 // ===== RESET =====
+// The server archives the current goal (history is kept) and starts a new one.
 resetBtn.addEventListener("click", () => {
-  if (!confirm("Are you sure? This clears everything.")) return;
+  if (!confirm("Are you sure? This starts a fresh goal.")) return;
 
-  data.targetMinutes = 0;
-  data.previousAccumulatedMinutes = 0;
-  data.assumedHoursPerDay = DEFAULT_PACE;
-  data.entries = [];
-
-  saveState();
-  populateInputsFromState();
-  resetLogForm();
-  render();
+  runAction(async () => {
+    const result = await api("POST", "/goal/reset");
+    applyGoal(result.goal);
+    data.entries = [];
+    populateInputsFromState();
+    resetLogForm();
+    render();
+  });
 });
 
 // =====================================================
 // START UP
 // =====================================================
-loadState();
-
-dateInput.max = getTodayString(); // no future dates, past dates are allowed  
-populateInputsFromState();
+dateInput.max = getTodayString(); // no future dates, past dates are allowed
 resetLogForm();
-render();
+render(); // empty screen until the server answers
+
+(async function start() {
+  try {
+    await loadFromServer();
+    populateInputsFromState();
+    render();
+  } catch (error) {
+    if (error.status === 401) {
+      showAuthScreen(); // not logged in yet: show the login box
+    } else {
+      alert(error.message);
+    }
+  }
+})();

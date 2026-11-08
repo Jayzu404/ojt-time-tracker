@@ -191,6 +191,20 @@ hr { border: 0; }
 }
 .btn--reset:hover { background: #fdf4f2; }
 
+/* Logout: same shape as Reset, in the neutral green/grey palette */
+.btn--logout {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  color: var(--ink-soft);
+  font-size: 13px;
+  padding: 10px 16px;
+}
+.btn--logout:hover {
+  background: var(--green-soft);
+  border-color: #cfe5d9;
+  color: var(--green-dark);
+}
+
 .btn--primary {
   background: var(--green);
   color: #fff;
@@ -210,6 +224,13 @@ hr { border: 0; }
   gap: 12px;
   padding-top: 4px;
 }
+.topbar__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
 .brand { display: flex; align-items: center; gap: 10px; }
 .brand__icon {
   display: grid;
@@ -607,14 +628,129 @@ hr { border: 0; }
   background: var(--danger-border);
 }
 
+/* ---------- Login / sign up ---------- */
+.auth {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  padding: 24px 16px;
+  overflow-y: auto;
+  background: var(--bg);
+}
+.auth[hidden] { display: none; }
+
+.auth__card {
+  width: 100%;
+  max-width: 400px;
+  margin: auto; /* centers the card and keeps it scrollable when the keyboard opens */
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 32px 28px 28px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  box-shadow:
+    0 1px 2px rgba(29, 58, 52, 0.04),
+    0 16px 32px -16px rgba(29, 58, 52, 0.12);
+}
+
+.auth__brand { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+.auth__brand .brand__icon { width: 34px; height: 34px; border-radius: 10px; }
+.auth__brand-name { font-size: 15px; font-weight: 700; letter-spacing: -0.01em; }
+
+.auth__head { display: flex; flex-direction: column; gap: 6px; }
+.auth__title {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+.auth__sub { font-size: 13px; color: var(--ink-soft); }
+
+.auth__pw { position: relative; }
+.auth__pw .input { padding-right: 46px; }
+.auth__toggle {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 46px;
+  height: 46px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--ink-faint);
+  transition: color 0.15s ease;
+}
+.auth__toggle:hover { color: var(--ink-soft); }
+.auth__toggle svg { display: block; }
+.auth__toggle .icon-eye-off { display: none; }
+.auth__toggle[aria-pressed="true"] .icon-eye { display: none; }
+.auth__toggle[aria-pressed="true"] .icon-eye-off { display: block; }
+
+.auth__hint { font-size: 11.5px; color: var(--ink-soft); }
+
+.auth__error {
+  padding: 10px 12px;
+  border: 1px solid var(--danger-border);
+  border-radius: var(--radius-sm);
+  background: #fdf4f2;
+  color: var(--danger);
+  font-size: 12.5px;
+  line-height: 1.4;
+}
+.auth__error:empty { display: none; }
+
+.auth__submit { width: 100%; }
+.auth__submit:disabled { opacity: 0.6; cursor: not-allowed; }
+.auth__submit:disabled:hover { background: var(--green); }
+
+.auth__switch {
+  margin-top: 2px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+  text-align: center;
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+.auth__link {
+  padding: 0;
+  border: 0;
+  background: none;
+  font-weight: 600;
+  color: var(--green-dark);
+}
+.auth__link:hover { text-decoration: underline; }
+
+@media (max-width: 600px) {
+  .auth { padding: 16px; }
+  .auth__card { padding: 24px 20px 20px; }
+  .auth .input { font-size: 16px; } /* stops iOS zooming in on focus */
+}
+
 /* ---------- Small screens ---------- */
 @media (max-width: 380px) {
   .progress__body { flex-direction: column; align-items: stretch; }
   .ring { margin: 0 auto; }
   .hero__title, .ahead__date { font-size: 26px; }
+
+  /* header: keep brand + Reset + Log out on one row */
+  .brand { min-width: 0; gap: 8px; }
+  .brand__name {
+    font-size: 16px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .topbar__actions { gap: 6px; }
+  .btn--reset,
+  .btn--logout { padding: 9px 10px; font-size: 12.5px; gap: 6px; }
 }
 
 /* ---------- Larger screens: breathing room around the column ---------- */
 @media (min-width: 600px) {
   .app { padding-top: 32px; }
-} 
+}
